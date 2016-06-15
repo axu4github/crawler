@@ -17,7 +17,7 @@ class DynamicPageMiddleware(object):
             return response
         else:   
             self.driver.get(request.url)
-            time.sleep(10)
+            self.driver.implicitly_wait(10) # 隐式等待10秒
             return response.replace(body=self.driver.page_source.encode('utf-8'))
 
     def process_exception(self, request, exception, spider):
