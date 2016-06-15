@@ -9,4 +9,5 @@ class jdSpider(scrapy.spiders.Spider):
     start_urls = ["http://item.jd.com/2930658.html"]
 
     def parse(self, response):
-        print "parse " + response.url
+        # print "id " + response.xpath("//div[@id='product-intro']//div[@class='fl']/span[2]")
+        pass
