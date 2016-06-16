@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*- 
 from selenium import webdriver
 import time
+import sys
+reload(sys)                         
+sys.setdefaultencoding('utf-8') 
 
 class DynamicPageMiddleware(object):
     
@@ -18,7 +21,8 @@ class DynamicPageMiddleware(object):
         else:   
             self.driver.get(request.url)
             self.driver.implicitly_wait(10) # 隐式等待10秒
-            return response.replace(body=self.driver.page_source.encode('utf-8'))
+            # return response.replace(body=self.driver.page_source.encode('utf-8'))
+            return response.replace(body=self.driver.page_source)
 
     def process_exception(self, request, exception, spider):
         self.driver.close()
