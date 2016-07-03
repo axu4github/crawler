@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
-reload(sys)                         
-sys.setdefaultencoding('utf-8') 
+reload(sys)
+sys.setdefaultencoding('utf-8')
 import scrapy
 import time
 import urllib
@@ -10,13 +10,16 @@ from jd.items import JdItem
 from scrapy.loader import ItemLoader
 from scrapy.spiders import Spider
 from scrapy.http import Request
+from ispiders.common_spider import CommonSpider
 
 
-class jdSpider(Spider):
+class jdSpider(CommonSpider):
 
     name = "jd"
     allowed_domains = ["jd.com"]
     start_urls = []
+    current_page_number = 1
+    result_set = []
 
     '''
         京东商品列表url参数说明
@@ -41,7 +44,7 @@ class jdSpider(Spider):
             page: 分页 (奇数 1,3,5,...,2n-1)
     '''
     # 搜索URL模板
-    SEARCH_URL_PATTERN = "http://search.jd.com/Search?keyword={keyword}&enc={enc}&stock={stock}&wtype={wtype}&psort={psort}&page={page}"
+    SEARCH_URL_PATTERN = "http://search.jd.com/Search?keyword={keyword}&enc={enc}&stock={stock}&wtype={wtype}&psort={psort}"
     # 搜索URL默认参数
     DEFAULT_ENC = 'utf-8'  # 网页编码
     DEFAULT_STOCK = 1  # 选择京东配送（京东自营）
@@ -50,37 +53,20 @@ class jdSpider(Spider):
     DEFAULT_PAGE = 1  # 第一页
     # 搜索关键字
     KEY_WORDS = [
-        'apple', 
+        'apple',
         # '苹果配件',
     ]
     # 京东获取商品价格URL模板
     GET_ITEM_PRICE_URL_PATTERN = "http://p.3.cn/prices/mgets?skuIds=J_{item_id}&type=1"
+    MAX_PAGE = 3
 
-    itemOfSelfEmployed = {
-        "id": {"xpath": "//div[@id='product-intro']//div[@id='short-share']//span[2]/text()"},
-        "name": {"xpath": "//div[@id='itemInfo']//div[@id='name']/h1/text()"},
-        "price": {"xpath": "//div[@id='itemInfo']//div[@id='summary']//div[@id='summary-price']//strong[@id='jd-price']/text()"},
-        "seller": {"xpath": "//div[@id='itemInfo']//div[@id='summary']//div[@id='summary-service']//div[@class='dd']/text()"},
-        # "prompts": {"xpath": "//div[@id='itemInfo']//div[@id='summary']//div[@id='J-summary-top']//em[@class='hl_red']/text()"},
-        "classification": {"xpath": "//div[@id='root-nav']//div[@class='breadcrumb']/strong/a/text()"},
-        "brand": {"xpath": "//div[@id='root-nav']//div[@class='breadcrumb']//span[2]/a[1]/text()"},
-    }
-
-    itemOfOther = {
-        "id": {"xpath": "//div[contains(@class, 'product-intro')]//div[@class='preview-info']//div[@class='sku']/span/text()"},
-        "name": {"xpath": "//div[contains(@class, 'product-intro')]//div[@class='itemInfo-wrap']//div[@class='sku-name']/text()"},
-        "price": {"xpath": "//div[contains(@class, 'product-intro')]//div[@class='itemInfo-wrap']//span[@class='p-price']/span/text()"},
-        "seller": {"xpath": "//div[contains(@class, 'product-intro')]//div[@class='summary-stock']//div[@class='dd']//div[@class='summary-service']/descendant::text()"},
-        # "prompts": {"xpath": "//div[@id='itemInfo']//div[@id='summary']//div[@id='J-summary-top']//em[@class='hl_red']/text()"},
-        "classification": {"xpath": "//div[@class='crumb-wrap']//div[contains(@class, 'item')]/a[contains(@clstag, 'mbNav-1')]/text()"},
-        "brand": {"xpath": "//div[@class='crumb-wrap']//div[contains(@class, 'item')]/a[contains(@clstag, 'mbNav-4')]/text()"},
-    }
+    # 分页URL模板
+    PAGE_URL_PATTERN = "{search_url}&page={page}"
 
     # 初始化 加载 start_urls 内容
     def __init__(self, *args, **kwargs):
         super(jdSpider, self).__init__(*args, **kwargs)
         self.init_start_urls()
-        print("====>%s<====" % '\n'.join(self.start_urls))
 
     def init_start_urls(self):
         for keyword in self.KEY_WORDS:
@@ -90,72 +76,55 @@ class jdSpider(Spider):
                     enc=self.DEFAULT_ENC,
                     stock=self.DEFAULT_STOCK,
                     wtype=self.DEFAULT_WTYPE,
-                    psort=self.DEFAULT_PSORT,
-                    page=self.DEFAULT_PAGE
+                    psort=self.DEFAULT_PSORT
                 ))
 
-    # 判断商品是不是京东自营
-    def isSelfEmployed(self, response):
-        return bool(response.xpath("//em[@class='u-jd']"))
-
-    # 判断是否搜到商品
-    def has_result(self, response):
-        return bool(response.xpath("//div[contains(@id, 'J_goodsList')]"))
-
     def get_item_price_by_request(self, item_id):
-        item_price = urllib.urlopen(self.GET_ITEM_PRICE_URL_PATTERN.format(item_id=item_id)).read()
+        item_price = urllib.urlopen(
+            self.GET_ITEM_PRICE_URL_PATTERN.format(item_id=item_id)).read()
         return json.loads(item_price)[0]['p']
 
     def process_item(self, items):
         for item in items:
             item_id = item.xpath("./@data-sku").extract()[0]
-            item_name = item.xpath(".//div[contains(@class, 'p-name')]/a/@title").extract()[0]
-            item_url = "http:%s" % item.xpath(".//div[contains(@class, 'p-name')]/a/@href").extract()[0]
-            item_img = item.xpath(".//div[contains(@class, 'p-img')]/a/img/@src").extract()
+            item_name = item.xpath(
+                ".//div[contains(@class, 'p-name')]/a/@title").extract()[0]
+            item_url = "http:%s" % item.xpath(
+                ".//div[contains(@class, 'p-name')]/a/@href").extract()[0]
+            item_img = item.xpath(
+                ".//div[contains(@class, 'p-img')]/a/img/@src").extract()
             if len(item_img) == 0:
-                item_img = item.xpath(".//div[contains(@class, 'p-img')]/a/img/@data-lazy-img").extract()
-            # item_price = item.xpath(".//div[contains(@class, 'p-price')]/strong/@data-price").extract()
-            # item_price = ''
-            # if item_price: 
+                item_img = item.xpath(
+                    ".//div[contains(@class, 'p-img')]/a/img/@data-lazy-img").extract()
             item_price = self.get_item_price_by_request(item_id)
+            self.result_set.append({
+                'id': item_id,
+                'name': item_name,
+                'url': item_url,
+                'img': item_img,
+                'price': item_price
+            })
 
-            print "| ==========="
-            print "| 商品编号: %s" % item_id
-            print "| 商品名称: %s" % item_name
-            print "| 商品价格: %s" % item_price
-            print "| 商品URL: %s" % item_url
-            print "| 商品图片: %s" % item_img
-            print "| ==========="
 
     def parse(self, response):
-        if self.has_result(response):
-            items = response.xpath("//ul[contains(@class, 'gl-warp')]/li")
-            total_pages = int(response.xpath("//div[contains(@id, 'J_topPage')]/span[contains(@class, 'fp-text')]/i/text()").extract()[0])
-            self.process_item(items)
-            # for i in range(1, total_pages + 1, 2):
-            #     # Request
+        self.process_item(response.xpath(
+            "//div[contains(@id, 'J_goodsList')]//li"))
+        next_page = response.xpath(
+            "//a[contains(@class, 'fp-next')]/@onclick").extract()
+        if next_page and self.current_page_number <= self.MAX_PAGE:
+            page_number = int(next_page[0].split('(').pop().split(')')[0])
+            self.current_page_number += 1
+            return scrapy.Request(self.get_next_page_url(response.url, page_number), callback=self.parse)
 
+        print len(self.result_set)
+        return self.result_set
 
+    def get_next_page_url(self, url, page_number):
+        arr_base_url = url.split('?')
+        # 提取参数，并将其转化为k=>v数组
+        argus = {item.split('=')[0]: item.split('=')[1]
+                 for item in arr_base_url.pop().split('&')}
+        if page_number:
+            argus['page'] = page_number
 
-
-    def parse_more_page(self, response):
-        pass
-
-    def parse_detail(self, response):
-        self.item = self.itemOfSelfEmployed if self.isSelfEmployed(
-            response) else self.itemOfOther
-
-        p = ItemLoader(item=JdItem(), response=response)
-        for key in self.item:
-            p.add_xpath(key, self.item[key]["xpath"])
-
-        p.load_item()
-        print "| ==========="
-        print "| 商品编号: %s" % "".join(p.get_output_value('id'))
-        print "| 商品名称: %s" % "".join(p.get_output_value('name'))
-        print "| 商品价格: %s" % "".join(p.get_output_value('price'))
-        print "| 供应商: %s" % "".join(p.get_output_value('seller'))
-        # print "| 促销信息: %s" % "+".join(p.get_output_value('prompts'))
-        print "| 分类: %s" % "".join(p.get_output_value('classification'))
-        print "| 品牌: %s" % "".join(p.get_output_value('brand'))
-        print "| ==========="
+        return "{base_url}?{arguments}".format(base_url=arr_base_url[0], arguments=urllib.urlencode(argus))

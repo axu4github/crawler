@@ -15,14 +15,10 @@ class DynamicPageMiddleware(object):
 
     def process_response(self, request, response, spider):
         url = request.url
-        # 若不是抓取连接则直接返回response
-        if url not in spider.start_urls:
-            return response
-        else:   
-            self.driver.get(request.url)
-            self.driver.implicitly_wait(10) # 隐式等待10秒
-            # return response.replace(body=self.driver.page_source.encode('utf-8'))
-            return response.replace(body=self.driver.page_source)
+        self.driver.get(request.url)
+        self.driver.implicitly_wait(10) # 隐式等待10秒
+        # return response.replace(body=self.driver.page_source.encode('utf-8'))
+        return response.replace(body=self.driver.page_source)
 
     def process_exception(self, request, exception, spider):
         self.driver.close()
