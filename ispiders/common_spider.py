@@ -9,6 +9,7 @@ class CommonSpider(scrapy.Spider):
     '''
     name = 'common_spider'
     start_urls = []
+    # keywords = ['apple', 'beats', 'beo', 'bose 123']
     keywords = ['apple']
     results = []
     curr_page_num = 1
@@ -17,11 +18,13 @@ class CommonSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(CommonSpider, self).__init__(*args, **kwargs)
         self.init_start_urls()
+        print "start_urls--------------------->--------------------->\n %s \n--------------------->--------------------->  " % "".join(self.start_urls)
 
     def init_start_urls(self):
         self.start_urls = [self.item_setting['base_url'].format(
             keyword=keyword) for keyword in self.keywords]
 
+    # 处理产品列表
     def process_items(self, response):
         items = []
         list_rule = self._list(self.item_setting['rules']['item_list'])
@@ -31,20 +34,16 @@ class CommonSpider(scrapy.Spider):
 
         return items
 
+    # 处理单个产品
     def process_item(self, item):
         item_obj = {}
-        # if 'item_class' in self.item_setting :
-        #     ItemClass = self.item_setting['item_class']
-        #     from jd.items import ItemClass
-        #     item_obj = ItemClass()
-
         for item_attr, item_xpaths in self.item_setting['rules']['item'].items():
             item_value = ""
             # 如果存在 process_{属性} 的方法，则优先执行该方法来获取该属性的值
             try:
-                function_name = "process_{item_attr}".format(
+                process_function = "process_{item_attr}".format(
                     item_attr=item_attr)
-                item_value = getattr(self, function_name)(item)
+                item_value = getattr(self, process_function)(item)
             # 如果不存在 process_{属性} 的方法，则使用xpath
             except Exception, e:
                 item_xpaths = self._list(item_xpaths)
@@ -56,13 +55,25 @@ class CommonSpider(scrapy.Spider):
             finally:
                 item_obj[item_attr] = item_value
 
+            try:
+                post_process_function = "post_process_{item_attr}".format(item_attr=item_attr)
+                item_value = getattr(self, post_process_function)(item_value, item)
+            except Exception, e: pass
+            finally:
+                item_obj[item_attr] = item_value
+
+        # print item
+        # for k, v in item_obj.items():
+        #     print "%s:%s" % (k,v)
+
         return item_obj
 
     def has_next_page(self, response):
-        page_rules = self._list(self.item_setting['rules']['page'])
-        for page_rule in page_rules:
-            if response.xpath(page_rule).extract():
-                return True
+        if 'page' in self.item_setting['rules']:
+            page_rules = self._list(self.item_setting['rules']['page'])
+            for page_rule in page_rules:
+                if response.xpath(page_rule).extract():
+                    return True
 
         return False
 
@@ -70,10 +81,15 @@ class CommonSpider(scrapy.Spider):
         print "RESPOSNE URL ===========> %s <===========" % response.url
         self.results.extend(self.process_items(response))
         if self.has_next_page(response) and self.curr_page_num < self.max_page_num:
+            next_page_url = self.get_next_page_url(
+                response, self.curr_page_num)
             self.curr_page_num += 1
-            return scrapy.Request(self.get_next_page_url(response), callback=self.parse)
+            return scrapy.Request(next_page_url, callback=self.parse)
 
-        return self.results
+        return self.post_parse(self.results)
+
+    def post_parse(self, results):
+        return results
 
     def _list(self, item):
         return item if type(item) == list else [item]

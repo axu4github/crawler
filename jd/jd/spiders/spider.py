@@ -1,15 +1,7 @@
 # -*- coding: utf-8 -*-
-import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
-import scrapy
-import time
+
 import urllib
-import json
-from jd.items import JdItem
-from scrapy.loader import ItemLoader
-from scrapy.spiders import Spider
-from scrapy.http import Request
+import re
 from ispiders.common_spider import CommonSpider
 
 
@@ -22,14 +14,14 @@ class jdSpider(CommonSpider):
     #     京东商品列表url参数说明
 
     #     例子: http://search.jd.com/Search?keyword=apple&enc=utf-8&stock=1&wtype=1&psort=3&page=1
-    #     说明: 
+    #     说明:
     #         keyword: 关键字 (搜索内容)
     #         enc: 编码 (utf-8)
     #         stock:  是否选择京东配送
-    #                 0 => 不选 京东配送 
+    #                 0 => 不选 京东配送
     #                 1 => 选择 京东配送 (非0均可)
     #         wtype:  是否选择显示有货
-    #                 0 => 不选 显示有货 
+    #                 0 => 不选 显示有货
     #                 1 => 选择 显示有货 (非0均可)
     #         psort:  排序方式
     #                 0 => 按综合排序
@@ -51,10 +43,10 @@ class jdSpider(CommonSpider):
         'page_url': '{base_url}&page={page}',
         'item_class': 'JdItem',
         'rules': {
-            'item_list': ["//div[contains(@id, 'J_goodsList')]//li"],
+            'item_list': ["//div[contains(@id, 'J_goodsList')]/ul/li"],
             'item': {
                 'id':       ["./@data-sku"],
-                'name':     [".//div[contains(@class, 'p-name')]/a/@title"],
+                'name':     [".//div[contains(@class, 'p-name')]/a/em"],
                 'url':      [".//div[contains(@class, 'p-name')]/a/@href"],
                 'img':      [".//div[contains(@class, 'p-img')]/a/img/@src", ".//div[contains(@class, 'p-img')]/a/img/@data-lazy-img"],
                 'price':    [".//div[contains(@class, 'p-price')]//i/text()"],
@@ -63,16 +55,30 @@ class jdSpider(CommonSpider):
         }
     }
 
-    # def process_price(self, item):
-    #     item_id = item.xpath(self.item_setting['rules']['item']['id'][0]).extract()[0]
-    #     item_price = urllib.urlopen(
-    #         self.GET_ITEM_PRICE_URL_PATTERN.format(item_id=item_id)).read()
-    #     return json.loads(item_price)[0]['p']
+    def post_process_url(self, value, item):
+        return "http:{value}".format(value=value)
 
+    def post_process_img(self, value, item):
+        return "http:{value}".format(value=value)
 
-    def get_next_page_url(self, response):
+    def post_process_name(self, value, item):
+        return re.sub('<[^>]+>','',value)
+
+    def post_parse(self, results):
+        print len(results)
+        # i = 1
+        # for result in results:
+        #     print i
+        #     i += 1
+        #     for k, v in result.items():
+        #         print "%s:%s" % (k,v)            
+
+        # return results
+
+    def get_next_page_url(self, response, curr_page_num):
         arr_base_url = response.url.split('?')
-        page_number = int(response.xpath(self.item_setting['rules']['page'][0]).extract()[0].split('(').pop().split(')')[0])
+        page_number = int(response.xpath(self.item_setting['rules']['page'][
+                          0]).extract()[0].split('(').pop().split(')')[0])
         # 提取参数，并将其转化为k=>v数组
         argus = {item.split('=')[0]: item.split('=')[1]
                  for item in arr_base_url.pop().split('&')}
