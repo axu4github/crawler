@@ -10,7 +10,7 @@ class CommonSpider(scrapy.Spider):
     name = 'common_spider'
     start_urls = []
     # keywords = ['apple', 'beats', 'beo', 'bose 123']
-    keywords = ['apple']
+    keywords = ['apple', 'beats']
     results = []
     curr_page_num = 1
     max_page_num = 3
