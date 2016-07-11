@@ -64,17 +64,6 @@ class jdSpider(CommonSpider):
     def post_process_name(self, value, item):
         return re.sub('<[^>]+>','',value)
 
-    def post_parse(self, results):
-        print len(results)
-        # i = 1
-        # for result in results:
-        #     print i
-        #     i += 1
-        #     for k, v in result.items():
-        #         print "%s:%s" % (k,v)            
-
-        # return results
-
     def get_next_page_url(self, response, curr_page_num):
         arr_base_url = response.url.split('?')
         page_number = int(response.xpath(self.item_setting['rules']['page'][
