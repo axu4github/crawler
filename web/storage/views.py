@@ -11,9 +11,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
+    
 
-class PriceViewSet(viewsets.ModelViewSet):
-    """docstring for QueryViewSet"""
 
-    queryset = Price.objects.all()
-    serializer_class = PriceSerializer
+# class PriceViewSet(viewsets.ModelViewSet):
+#     """docstring for QueryViewSet"""
+
+#     queryset = Price.objects.all()
+#     serializer_class = PriceSerializer
