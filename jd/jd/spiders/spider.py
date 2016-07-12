@@ -9,6 +9,7 @@ class jdSpider(CommonSpider):
 
     name = "jd"
     allowed_domains = ["jd.com"]
+    provider = "jd"
 
     # '''
     #     京东商品列表url参数说明
