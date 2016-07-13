@@ -10,7 +10,8 @@ class CommonSpider(scrapy.Spider):
     name = 'common_spider'
     start_urls = []
     # keywords = ['apple', 'beats', 'beo', 'bose 123']
-    keywords = ['apple', 'beats', '小米', '罗技', 'Bose', '微软', 'Jabra', 'FILCO']
+    # keywords = ['apple', 'beats', '小米', '罗技', 'Bose', '微软', 'Jabra', 'FILCO']
+    keywords = ['apple']
     results = []
     curr_page_num = 1
     max_page_num = 5
@@ -18,7 +19,6 @@ class CommonSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
         super(CommonSpider, self).__init__(*args, **kwargs)
         self.init_start_urls()
-        print "start_urls--------------------->--------------------->\n %s \n--------------------->--------------------->  " % "".join(self.start_urls)
 
     def init_start_urls(self):
         self.start_urls = [self.item_setting['base_url'].format(
@@ -56,9 +56,12 @@ class CommonSpider(scrapy.Spider):
                 item_obj[item_attr] = item_value
 
             try:
-                post_process_function = "post_process_{item_attr}".format(item_attr=item_attr)
-                item_value = getattr(self, post_process_function)(item_value, item)
-            except Exception, e: pass
+                post_process_function = "post_process_{item_attr}".format(
+                    item_attr=item_attr)
+                item_value = getattr(
+                    self, post_process_function)(item_value, item)
+            except Exception, e:
+                pass
             finally:
                 item_obj[item_attr] = item_value
 

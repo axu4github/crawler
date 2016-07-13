@@ -28,9 +28,6 @@ class Product(models.Model):
     class Meta:
         ordering = ('-modified',)
 
-    # def __str__(self):
-    #     return self.unique
-
 
 class Price(models.Model):
 
@@ -40,6 +37,3 @@ class Price(models.Model):
 
     class Meta:
         ordering = ('-created',)
-
-    # def __str__(self):
-    #     return self.product
